@@ -1,0 +1,32 @@
+# ------------------------------------------------------------------
+# Módulo 2 — Automação de Documentos
+# ------------------------------------------------------------------
+
+# Ambiente virtual
+.venv/
+venv/
+env/
+
+# Cache e artefatos do Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Saídas geradas pelos scripts (refeitas a cada execução).
+# Ignoramos o CONTEÚDO, mas mantemos os .gitkeep para preservar as pastas.
+saida/*.xlsx
+saida/oficios/*
+saida/pdfs/*
+!saida/.gitkeep
+!saida/oficios/.gitkeep
+!saida/pdfs/.gitkeep
+
+# Arquivos temporários do Office (abrir um .docx/.xlsx gera estes)
+~$*
+
+# Editores / sistema operacional
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,7 @@
+# Bibliotecas do Módulo 2 — Automação de Documentos
+# Instale tudo de uma vez com:  pip install -r requirements.txt
+
+pandas          # Frente 0 — ler e limpar a planilha
+openpyxl        # Frente 3 — ler/escrever Excel formatado
+python-docx     # Frente 1 — gerar os ofícios em Word
+reportlab       # Frente 2 — gerar os PDFs
