@@ -17,19 +17,163 @@ e claras.
 
 Novo na versão com Módulo 3:
   • Verifica bibliotecas e arquivos dos DOIS módulos.
-  • Oferece sincronizar o repositório com o Git (git pull) para que novos
-    arquivos compartilhados pelo professor cheguem à máquina de cada aluno
-    — sem precisar clonar de novo.
+  • Oferece sincronizar o repositório com o Git (git pull) — e, se o Git
+    não estiver instalado ou o pull falhar, BAIXA o repositório como ZIP
+    via HTTP (só stdlib). Funciona mesmo sem git, sem precisar clonar.
+  • Pode instalar as bibliotecas do curso (pip) automaticamente.
 
 IMPORTANTE: este arquivo usa SÓ a biblioteca padrão do Python, de
 propósito — ele precisa rodar mesmo antes de você instalar qualquer coisa.
 """
 
 import importlib.util
+import os
 import shutil
 import subprocess
 import sys
+import tempfile
+import urllib.request
+import zipfile
 from pathlib import Path
+
+# --------------------------------------------------------------------------
+# Configuração do repositório do curso
+#
+# O professor define AQUI a URL do repo. Mesmo sem o Git instalado, este
+# script consegue BAIXAR tudo (ZIP via HTTP) e SINCRONIZAR os arquivos do
+# repositório para a máquina do aluno.优先ível de também editar em
+# .repo_url (uma linha com a URL) ou via variável de ambiente AULA_REPO_URL.
+# --------------------------------------------------------------------------
+REPO_URL_DEFAULT = "https://github.com/alexand7e/python-modulo-2.git"
+RAMO_DEFAULT = "main"
+
+# Pastas/arquivos que NUNCA devem ser sobrescritos pelo download do ZIP,
+# para não apagar o trabalho do aluno nem o ambiente virtual.
+PROTEGIDOS_DOWNLOAD = {".git", ".venv", "venv", "env", "__pycache__", "saida"}
+
+
+def resolver_url_repo() -> str:
+    """Resolve a URL do repo: variável de ambiente > .repo_url > git remote > padrão."""
+    url = os.environ.get("AULA_REPO_URL")
+    if url:
+        return url.strip()
+    arq = Path(__file__).resolve().parent / ".repo_url"
+    if arq.is_file():
+        for linha in arq.read_text(encoding="utf-8").splitlines():
+            linha = linha.strip()
+            if linha and not linha.startswith("#"):
+                return linha
+    # tenta ler o remote via git, se existir
+    git = shutil.which("git")
+    if git and (Path(__file__).resolve().parent / ".git").is_dir():
+        try:
+            res = subprocess.run(
+                [git, "remote", "get-url", "origin"],
+                cwd=Path(__file__).resolve().parent,
+                capture_output=True, text=True, timeout=15, check=False,
+            )
+            if res.returncode == 0 and res.stdout.strip():
+                return res.stdout.strip()
+        except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+            pass
+    return REPO_URL_DEFAULT
+
+
+def url_para_zip(url_repo: str, ramo: str = RAMO_DEFAULT) -> str:
+    """Converte 'https://github.com/USER/REPO.git' em URL do ZIP do ramo."""
+    url = url_repo.rstrip("/").removesuffix(".git")
+    # suporta github.com/USER/REPO
+    if "github.com" in url:
+        # -> https://codeload.github.com/USER/REPO/zip/refs/heads/RAMO
+        partes = url.split("github.com/", 1)[-1]
+        return f"https://codeload.github.com/{partes}/zip/refs/heads/{ramo}"
+    # fallback genérico: /archive/refs/heads/RAMO.zip
+    return f"{url}/archive/refs/heads/{ramo}.zip"
+
+
+def baixar_e_extrair_zip(raiz: Path, ramo: str = RAMO_DEFAULT,
+                          silencioso: bool = False) -> bool:
+    """Baixa o repositório como ZIP (via HTTP, só stdlib) e sincroniza os
+    arquivos para a pasta do curso — SÓ caminha via HTTP, sem precisar do
+    Git. Não sobrescreve pastas protegidas (.git, .venv, saida, etc.).
+
+    Retorna True em caso de sucesso.
+    """
+    url_zip = url_para_zip(resolver_url_repo(), ramo)
+    if not silencioso:
+        print(f"  Baixando ZIP do repositório:\n     {url_zip}")
+    try:
+        req = urllib.request.Request(
+            url_zip,
+            headers={"User-Agent": "iniciando_a_aula/1.0 (curso python)"},
+        )
+        with urllib.request.urlopen(req, timeout=90) as resp:
+            dados = resp.read()
+        total_kb = max(1, len(dados) // 1024)
+        if not silencioso:
+            print(f"  {OK} download: {total_kb} KB recebidos.")
+    except Exception as e:
+        print(f"  {FALTA} falha ao baixar o ZIP: {e}")
+        print("       Verifique a internet ou a URL do repositório (REPO URL no")
+        print("       topo do script).")
+        return False
+
+    # extrai num diretório temporário, depois copia selecionando o que passar
+    with tempfile.TemporaryDirectory(prefix="aula_zip_") as tmp:
+        zip_path = Path(tmp) / "repo.zip"
+        zip_path.write_bytes(dados)
+        try:
+            with zipfile.ZipFile(zip_path) as zf:
+                zf.extractall(tmp)
+        except zipfile.BadZipFile as e:
+            print(f"  {FALTA} arquivo ZIP veio corrompido: {e}")
+            return False
+
+        # O GitHub cria uma pasta raiz 'REPO-ramo/' dentro do ZIP.
+        sub = [p for p in Path(tmp).iterdir() if p.is_dir()]
+        raiz_zip = sub[0] if len(sub) == 1 else Path(tmp)
+        if not silencioso:
+            n = sum(1 for _ in raiz_zip.rglob("*") if _.is_file())
+            print(f"  Copiando {n} arquivos do repositório...")
+
+        copiados, pulados = 0, 0
+        for origem in raiz_zip.rglob("*"):
+            if not origem.is_file():
+                continue
+            rel = origem.relative_to(raiz_zip)
+            # pula protegebidos (primeiro componente do caminho)
+            if rel.parts and rel.parts[0] in PROTEGIDOS_DOWNLOAD:
+                pulados += 1
+                continue
+            # também pula .git, .venv em qualquer nível
+            if any(part in PROTEGIDOS_DOWNLOAD for part in rel.parts):
+                pulados += 1
+                continue
+            destino = raiz / rel
+            destino.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(origem, destino)
+            copiados += 1
+
+        if not silencioso:
+            print(f"  {OK} {copiados} arquivos atualizados, {pulados} protegidos"
+                  " (.venv/saida/.git) preservados.")
+    return True
+
+
+def instalar_dependencias(raiz: Path, silencioso: bool = False) -> bool:
+    """Oferece instalar as bibliotecas do curso via pip automaticamente."""
+    req = raiz / "requirements.txt"
+    if not req.is_file():
+        print(f"  {ALERTA} requirements.txt não encontrado — nada p/ instalar.")
+        return False
+    cmd = [sys.executable, "-m", "pip", "install", "-r", str(req)]
+    if not silencioso:
+        print(f" Rodando: {' '.join(cmd)}")
+    try:
+        return subprocess.run(cmd, check=False).returncode == 0
+    except (FileNotFoundError, OSError) as e:
+        print(f"  {FALTA} não consegui rodar o pip: {e}")
+        return False
 
 
 # --------------------------------------------------------------------------
@@ -91,54 +235,60 @@ class GitSync:
         except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
             return None
 
-    def sincronizar(self) -> None:
-        """Tenta `git pull` no repositório. Múltiplas tentativas com fallback."""
-        print(f"  Remote detectado: {self.remote_atual() or '(nenhum)'}")
+    def sincronizar(self) -> bool:
+        """Tenta `git pull`; se não der, cai no fallback de baixar o ZIP.
+
+        Retorna True se conseguiu sincronizar de algum jeito.
+        """
         if not self.tem_git():
-            print(f"  {ALERTA} git não encontrado no PATH — pulando sincronização.")
-            print("       Instale o Git (https://git-scm.com) e rode novamente.")
-            return
+            print(f"  {ALERTA} git não encontrado no PATH.")
+            print("       Sem problema: vou baixar o repositório como ZIP "
+                  "(via HTTP).")
+            return self._fallback_zip("git indisponível")
         if not self.no_repositorio():
             print(f"  {ALERTA} não é um repositório Git aqui ({self.raiz}).")
-            print("       Para baixar o curso do zero, use:")
-            print(f"         {Cor.NEGRITO}git clone <url-do-professor>"
-                  f"{Cor.FIM}")
-            return
+            print("       Vou baixar o repositório como ZIP (via HTTP).")
+            return self._fallback_zip("sem repositório local")
 
+        print(f"  Remote detectado: {self.remote_atual() or '(nenhum)'}")
         print("Tentando sincronizar com o remote (git pull)...")
-        # Tentativa 1: git pull (abraça fetch + merge/rebase)
-        ok = self._tentar_comando(["pull", "--ff-only"], "pull --ff-only")
-        if ok:
+        # Tentativa 1: git pull --ff-only
+        if self._tentar_comando(["pull", "--ff-only"], "pull --ff-only"):
             print(f"  {OK} repositório sincronizado (fast-forward).")
-            return
-
-        # Tentativa 2: um pull comum (pode criar merge)
-        ok = self._tentar_comando(["pull"], "pull")
-        if ok:
+            return True
+        # Tentativa 2: pull comum
+        if self._tentar_comando(["pull"], "pull"):
             print(f"  {OK} repositório sincronizado.")
-            return
+            return True
+        # Tentativa 3: fetch --all
+        if self._tentar_comando(["fetch", "--all"], "fetch --all",
+                                msg_ok="busquei novidades (fetch) — "
+                                       "use `git merge`/`git pull` manualmente."):
+            return True
 
-        # Tentativa 3: apenas fetch, sem mexer na cópia de trabalho
-        ok = self._tentar_comando(["fetch", "--all"], "fetch --all",
-                                  msg_ok="busquei novidades (fetch) — "
-                                         "rode `git merge`/`git pull` manual"
-                                  " se houver mudanças.")
+        # Tentativa 4: fallback de ZIP (não precisa de merge)
+        print(f"  {ALERTA} git pull falhou. Tentando baixar o ZIP...")
+        return self._fallback_zip("git pull falhou")
+
+    def _fallback_zip(self, motivo: str) -> bool:
+        """Última barreira: baixa e extrai o repositório como ZIP via HTTP."""
+        print(f"  (motivo do fallback: {motivo})")
+        ok = baixar_e_extrair_zip(self.raiz, RAMO_DEFAULT)
         if ok:
-            return
-
-        # Tentativa 4: fallback — mostrar status para o aluno decidir
-        print(f"  {ALERTA} não consegui sincronizar automaticamente.")
-        print("       Possíveis causas:")
-        print("         • mudanças locais não commitadas (Salve antes e rode "
-              "`git stash` ou faça um commit.)")
-        print("         • sem internet ou remote incorreto.")
-        print("         • histórico divergente que exige merge manual.")
-        print("       Rode à mão, na raiz do projeto:")
-        print(f"         {Cor.NEGRITO}git status{Cor.FIM}    e    "
-              f"{Cor.NEGRITO}git pull{Cor.FIM}")
-        print("       Dica: para não perder seu trabalho, antes de tudo:")
-        print(f"         {Cor.NEGRITO}git stash{Cor.FIM}   (guarda mudanças à "
-              "parte) → git pull → git stash pop")
+            print(f"  {OK} repositório sincronizado via download ZIP.")
+            print("       Se você tinha mudanças locais em arquivos do repo,")
+            print("       elas foram sobrescritas — pastas .venv/ e saida/ "
+                  "foram preservadas.")
+        else:
+            print(f"  {FALTA} não foi possível sincronizar nem via Git, "
+                  "nem via ZIP.")
+            print("       Rode à mão, na raiz do projeto:")
+            print(f"         {Cor.NEGRITO}git status{Cor.FIM}  e  "
+                  f"{Cor.NEGRITO}git pull{Cor.FIM}")
+            print("       Dica: para não perder seu trabalho:")
+            print(f"         {Cor.NEGRITO}git stash{Cor.FIM} → git pull "
+                  "→ git stash pop")
+        return ok
 
     def _tentar_comando(self, args, nome, msg_ok=None) -> bool:
         """Roda um subcomando git; retorna True em caso de sucesso."""
@@ -180,18 +330,29 @@ def perguntar_sim(pergunta: str) -> bool:
 
 
 def sec_sincronizacao_git() -> None:
-    titulo("0. Sincronizar com o Git (pegar arquivos novos)")
-    gitsync = GitSync(Path(__file__).resolve().parent)
-    print("Com o Módulo 3 vimos arquivos novos compartilhados no repositório.")
-    print("Sincroniza-los agora garante que você tem os scripts e as bases.")
-    if gitsync.no_repositorio() and gitsync.tem_git():
-        if perguntar_sim("Sincronizar agora (git pull)"):
-            gitsync.sincronizar()
-        else:
-            print(f"  {ALERTA} pulado. Lembre: rode  git pull  antes de "
-                  "começar a aula.")
+    raiz = Path(__file__).resolve().parent
+    titulo("0. Sincronizar / baixar arquivos do curso")
+    gitsync = GitSync(raiz)
+    url = resolver_url_repo()
+    print("Repositório do curso:")
+    print(f"   {Cor.NEGRITO}{url}{Cor.FIM}  (ramo: {RAMO_DEFAULT})")
+    print("Compartilhamos scripts e bases pelo Git. Vou sincronizar de dois")
+    print("jeitos, com redundância: (1) git pull, e se não der,")
+    print("(2) baixar o repositório como ZIP via HTTP — funciona MESMO sem")
+    print("o Git instalado.")
+    if perguntar_sim("Baixar/sincronizar agora"):
+        gitsync.sincronizar()
+        print()
+        if perguntar_sim("Já instalar as bibliotecas do curso (pip) agora"):
+            if instalar_dependencias(raiz):
+                print(f"  {OK} bibliotecas instaladas em "
+                      f"{sys.executable}")
+            else:
+                print(f"  {ALERTA} a instalação via pip falhou — veja o "
+                      "passo manual no final.")
     else:
-        gitsync.sincronizar()  # mostra as mensagens explicativas
+        print(f"  {ALERTA} pulado. Lembre de rodar  git pull  (ou este "
+              "script de novo) antes de começar a aula.")
 
 
 # --------------------------------------------------------------------------
@@ -362,8 +523,9 @@ def main() -> None:
             print(f"  {FALTA} Faltam {len(faltando)} biblioteca(s): "
                   f"{', '.join(faltando)}")
         if not estrutura_ok:
-            print(f"  {ALERTA} Faltam pastas/arquivos (veja o item 3). "
-                  "Tente:  git pull")
+            print(f"  {ALERTA} Faltam pastas/arquivos (veja o item 3).")
+            print("       Rode este script de novo e aceite baixar/"
+                  "sincronizar (na seção 0).")
         if faltando:
             receita_de_instalacao(faltando)
 
