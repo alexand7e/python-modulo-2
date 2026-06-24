@@ -5,3 +5,11 @@ pandas          # Frente 0 — ler e limpar a planilha
 openpyxl        # Frente 3 — ler/escrever Excel formatado
 python-docx     # Frente 1 — gerar os ofícios em Word
 reportlab       # Frente 2 — gerar os PDFs
+
+# Bibliotecas do Módulo 3 — Análise de Dados
+matplotlib      # notebook ETL — gráficos de barras, linhas e pizza (PNG)
+jupyterlab      # notebook ETL — abrir e rodar notebook_etl.ipynb
+
+# Bibliotecas do dashboard
+streamlit       # dashboard interativo (m3_dashboard_streamlit.py)
+pillow          # dependência para imagens no reportlab/streamlit

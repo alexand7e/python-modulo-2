@@ -24,9 +24,9 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
-RAIZ = Path(__file__).resolve().parent.parent
-PLANILHA = RAIZ / "saida" / "servidores_limpo.xlsx"
-SAIDA = RAIZ / "saida" / "servidores_formatado.xlsx"
+RAIZ = Path(__file__).resolve().parent.parent.parent
+PLANILHA = RAIZ / "saida" / "modulo2" / "servidores_limpo.xlsx"
+SAIDA = RAIZ / "saida" / "modulo2" / "servidores_formatado.xlsx"
 
 # Paleta institucional (cores em formato hexadecimal ARGB do openpyxl).
 COR_CABECALHO = "FF1F4E79"   # azul escuro

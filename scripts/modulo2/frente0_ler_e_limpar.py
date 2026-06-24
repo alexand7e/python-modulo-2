@@ -25,9 +25,9 @@ from pathlib import Path
 import pandas as pd
 
 # Caminhos relativos à raiz do projeto (este script vive em scripts/).
-RAIZ = Path(__file__).resolve().parent.parent
-ENTRADA = RAIZ / "entrada" / "servidores.xlsx"
-SAIDA = RAIZ / "saida" / "servidores_limpo.xlsx"
+RAIZ = Path(__file__).resolve().parent.parent.parent
+ENTRADA = RAIZ / "entrada" / "modulo2" / "servidores.xlsx"
+SAIDA = RAIZ / "saida" / "modulo2" / "servidores_limpo.xlsx"
 
 
 # ==========================================================================

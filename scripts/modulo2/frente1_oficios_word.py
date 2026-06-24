@@ -25,10 +25,10 @@ from pathlib import Path
 import pandas as pd
 from docx import Document
 
-RAIZ = Path(__file__).resolve().parent.parent
-PLANILHA = RAIZ / "saida" / "servidores_limpo.xlsx"
+RAIZ = Path(__file__).resolve().parent.parent.parent
+PLANILHA = RAIZ / "saida" / "modulo2" / "servidores_limpo.xlsx"
 MODELO = RAIZ / "modelo" / "oficio_modelo.docx"
-PASTA_SAIDA = RAIZ / "saida" / "oficios"
+PASTA_SAIDA = RAIZ / "saida" / "modulo2" / "oficios"
 
 # Dados fixos do órgão (iguais para todos os ofícios).
 CIDADE = "Teresina"
@@ -63,7 +63,7 @@ def nome_de_arquivo(numero: str, nome: str) -> str:
 def substituir_marcadores(doc: Document, dados: dict[str, str]) -> None:
     """Troca cada {{CAMPO}} pelo valor correspondente, em todo o documento.
 
-    DETALHE IMPORTANTE (e armadilha clássica): o Word costuma quebrar um
+    DETALHETransforma IMPORTANTE (e armadilha clássica): o Word costuma quebrar um
     texto em vários "runs" internos, então '{{NOME}}' pode estar partido
     em pedaços ('{{NO' + 'ME}}'). Por isso juntamos o texto do parágrafo
     inteiro, fazemos a troca, e reescrevemos o parágrafo num run só.
@@ -95,6 +95,7 @@ def gerar_um_oficio(linha: pd.Series, hoje: str) -> Path:
         "NUMERO_OFICIO": linha["Numero_Oficio"],
         "CIDADE": CIDADE,
         "DATA_HOJE": hoje,
+        "ASSUNTO": "Ofício de Comunicação",
     }
     doc = Document(MODELO)               # abre o modelo do zero a cada linha
     substituir_marcadores(doc, dados)    # preenche

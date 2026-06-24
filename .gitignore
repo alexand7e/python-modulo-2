@@ -1,5 +1,5 @@
 # ------------------------------------------------------------------
-# Módulo 2 — Automação de Documentos
+# Módulo 2 — Automação de Documentos  /  Módulo 3 — Análise de Dados
 # ------------------------------------------------------------------
 
 # Ambiente virtual
@@ -13,14 +13,26 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 
+# Jupyter
+.ipynb_checkpoints/
+
 # Saídas geradas pelos scripts (refeitas a cada execução).
 # Ignoramos o CONTEÚDO, mas mantemos os .gitkeep para preservar as pastas.
-saida/*.xlsx
-saida/oficios/*
-saida/pdfs/*
-!saida/.gitkeep
-!saida/oficios/.gitkeep
-!saida/pdfs/.gitkeep
+
+# Módulo 2 (Automação de Documentos)
+saida/modulo2/*.xlsx
+saida/modulo2/oficios/*
+saida/modulo2/pdfs/*
+!saida/modulo2/.gitkeep
+!saida/modulo2/oficios/.gitkeep
+!saida/modulo2/pdfs/.gitkeep
+
+# Módulo 3 (Análise de Dados)
+saida/modulo3/*.xlsx
+saida/modulo3/graficos/*
+saida/modulo3/*.pdf
+!saida/modulo3/.gitkeep
+!saida/modulo3/graficos/.gitkeep
 
 # Arquivos temporários do Office (abrir um .docx/.xlsx gera estes)
 ~$*

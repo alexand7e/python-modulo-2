@@ -19,8 +19,8 @@ import argparse
 import re
 from pathlib import Path
 
-RAIZ = Path(__file__).resolve().parent.parent
-PASTA_OFICIOS = RAIZ / "saida" / "oficios"
+RAIZ = Path(__file__).resolve().parent.parent.parent
+PASTA_OFICIOS = RAIZ / "saida" / "modulo2" / "oficios"
 
 ANO = 2026
 
@@ -88,7 +88,7 @@ def main() -> None:
 # >>> EXERCÍCIO PRINCIPAL DOS ALUNOS: ORGANIZAR POR SECRETARIA <<<
 # --------------------------------------------------------------------------
 # Slide 15: "Mover cada ofício para a subpasta da sua secretaria, cruzando
-# com a lotação da planilha."   ->   saida/oficios/Secretaria_de_Educacao/...
+# com a lotação da planilha."   ->   saida/modulo2/oficios/Secretaria_de_Educacao/...
 #
 # Pense com os 4 pilares:
 #   • DECOMPOSIÇÃO: (1) ler a planilha p/ saber a lotação de cada número de
@@ -102,7 +102,7 @@ def main() -> None:
 # Esqueleto para você completar (apague o `pass` e implemente):
 def organizar_por_secretaria(pasta: Path, aplicar: bool = False) -> None:
     """Mover cada ofício para uma subpasta com o nome da sua secretaria."""
-    # DICA: leia saida/servidores_limpo.xlsx com pandas para mapear
+    # DICA: leia saida/modulo2/servidores_limpo.xlsx com pandas para mapear
     #   Numero_Oficio -> Lotacao, e use shutil.move para mover.
     # Lembre-se de criar a subpasta com .mkdir(parents=True, exist_ok=True)
     # e de NUNCA mover de verdade sem antes mostrar o plano.

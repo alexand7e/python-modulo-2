@@ -29,9 +29,9 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm
 from reportlab.pdfgen import canvas
 
-RAIZ = Path(__file__).resolve().parent.parent
-PLANILHA = RAIZ / "saida" / "servidores_limpo.xlsx"
-PASTA_SAIDA = RAIZ / "saida" / "pdfs"
+RAIZ = Path(__file__).resolve().parent.parent.parent
+PLANILHA = RAIZ / "saida" / "modulo2" / "servidores_limpo.xlsx"
+PASTA_SAIDA = RAIZ / "saida" / "modulo2" / "pdfs"
 
 
 def nome_de_arquivo(nome: str) -> str:
