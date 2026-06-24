@@ -28,7 +28,6 @@ saida/modulo2/pdfs/*
 !saida/modulo2/pdfs/.gitkeep
 
 # Módulo 3 (Análise de Dados)
-saida/modulo3/*.xlsx
 saida/modulo3/graficos/*
 saida/modulo3/*.pdf
 !saida/modulo3/.gitkeep

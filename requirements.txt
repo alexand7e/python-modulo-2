@@ -12,4 +12,5 @@ jupyterlab      # notebook ETL — abrir e rodar notebook_etl.ipynb
 
 # Bibliotecas do dashboard
 streamlit       # dashboard interativo (m3_dashboard_streamlit.py)
+plotly          # gráficos interativos no dashboard
 pillow          # dependência para imagens no reportlab/streamlit

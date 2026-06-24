@@ -110,17 +110,19 @@ def alteradas(v1: pd.DataFrame, v2: pd.DataFrame) -> pd.DataFrame:
     mascara_linha = diferente.any(axis=1)
 
     alterados = b[mascara_linha].copy()
+    alterados = alterados.reset_index()  # traz CHAVE de volta como coluna
     alterados.insert(0, "tipo_diff", "ALTERADA")
 
     print(f"  [~] linhas alteradas  : {len(alterados)}")
     # detalha quais colunas mudaram
-    for chave_linha in alterados.index:
+    for _, row_alt in alterados.iterrows():
+        chv = str(row_alt.get(CHAVE, "?"))
         mudancas = [c for c in cols
-                    if str(a.loc[chave_linha, c]) != str(b.loc[chave_linha, c])]
+                    if str(a.loc[chv, c]) != str(b.loc[chv, c])]
         if mudancas:
-            trecho = ", ".join(f"{c}: '{a.loc[chave_linha,c]}'→'{b.loc[chave_linha,c]}'"
+            trecho = ", ".join(f"{c}: '{a.loc[chv,c]}'→'{b.loc[chv,c]}'"
                                for c in mudancas)
-            print(f"      {chave_linha:<18} {mudancas}")
+            print(f"      {chv:<18} {mudancas}")
     return alterados
 
 
